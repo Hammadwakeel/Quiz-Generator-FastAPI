@@ -1,0 +1,76 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyc
+*.pkl
+*.egg-info/
+.Python
+env/
+venv/
+ENV/
+.venv/
+
+# Virtual Environment folders (Linux/Mac/Windows)
+env/
+.venv/
+venv/
+ENV/
+
+# Jupyter Notebooks
+.ipynb_checkpoints/
+
+# VS Code
+.vscode/
+.history/
+
+# PyCharm
+.idea/
+
+# Logs and temp files
+*.log
+*.tmp
+*.bak
+*.swp
+.DS_Store
+
+# Database dumps
+*.sqlite3
+*.db
+
+# Coverage and test reports
+htmlcov/
+.coverage
+.tox/
+.nox/
+.cache/
+.pytest_cache/
+coverage.xml
+nosetests.xml
+test-results.xml
+
+# Compiled files
+build/
+dist/
+*.egg
+.eggs/
+*.so
+
+# MongoDB local dump
+dump/
+
+# HuggingFace cache
+~/.cache/huggingface
+.huggingface/
+
+# dotenv
+.env
+.env.*
+
+# Local dev artifacts
+*.local
+*.pid
+
+# FastAPI / Uvicorn static cache (optional)
+__pypackages__/
