@@ -4,12 +4,6 @@ class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
 
     # ───────────────────────────────────────────────────────────────────────────
-    # Google API Keys
-    # ───────────────────────────────────────────────────────────────────────────
-    pagespeed_api_key: str
-    gemini_api_key: str
-
-    # ───────────────────────────────────────────────────────────────────────────
     # Chat & RAG Configuration
     # ───────────────────────────────────────────────────────────────────────────
     groq_api_key: str
@@ -24,7 +18,7 @@ class Settings(BaseSettings):
     # MongoDB Configuration (Local)
     # ───────────────────────────────────────────────────────────────────────────
     mongo_uri: str = "mongodb://localhost:27017"
-    mongo_chat_db: str = "Education_chatbot"
+    mongo_chat_db: str = "QuizAI"
     mongo_chat_collection: str = "chat_histories"
 
     # ───────────────────────────────────────────────────────────────────────────
@@ -37,11 +31,11 @@ class Settings(BaseSettings):
     # ───────────────────────────────────────────────────────────────────────────
     # App Metadata (unchanged)
     # ───────────────────────────────────────────────────────────────────────────
-    app_name: str = "PageSpeed Insights Report Generator"
+    app_name: str = "AI Quiz Generator"
     app_version: str = "1.0.0"
     app_description: str = (
-        "Professional API for generating PageSpeed Insights reports "
-        "using Google's APIs and Gemini AI"
+        "An AI-powered quiz generator that creates quizzes from documents and "
+        "allows users to chat with the AI about those quizzes."
     )
 
     # ───────────────────────────────────────────────────────────────────────────

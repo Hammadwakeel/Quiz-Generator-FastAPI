@@ -74,3 +74,4 @@ dump/
 
 # FastAPI / Uvicorn static cache (optional)
 __pypackages__/
+git branch -M main

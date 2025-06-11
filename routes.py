@@ -1,6 +1,7 @@
 import os
 import uuid
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Body    # ← added Body here
+
 from typing import Optional
 
 from schemas import (
@@ -23,6 +24,9 @@ from utils import (
 from logging_config import logger
 
 from chat_history import ChatHistoryManager
+from langchain.prompts import PromptTemplate
+from embeddings import get_llm
+
 
 router = APIRouter(prefix="/rag", tags=["rag"])
 
@@ -164,6 +168,47 @@ async def chat_with_user(user_id: str, chat_id: str, body: ChatRequest):
             chat_id=chat_id,
             user_id=user_id
         )
+    
+def recommend_courses(course: str, marks: float) -> str:
+    """
+    Recommend three next-step courses based on the completed `course` and `marks`.
+    """
+    template = """
+    You are an academic advisor. A student just completed the course "{course}"
+    with a score of {marks}%. Recommend three specific next-step university
+    or online courses, and briefly explain why each is a good fit given their performance.
+    in the output only provide the course names, separated by commas.
+    Do not include any other text or explanations.
+    Example output:
+    "Advanced Physics, Data Science Fundamentals, Machine Learning Basics"
+    """
+    prompt = PromptTemplate.from_template(template)
+    prompt_text = prompt.format(course=course, marks=marks)
+
+    llm = get_llm()
+    try:
+        # invoke() may vary depending on your LLM wrapper (e.g. .generate, .predict, etc.)
+        return llm.invoke(prompt_text)
+    except Exception as e:
+        logger.error(f"Course recommendation error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Could not generate course recommendations.")
+
+@router.post("/recommendations")
+async def get_course_recommendations(
+    course: str = Body(..., description="Name of the completed course"),
+    marks: float = Body(..., description="Score achieved in that course (percentage)")
+):
+    """
+    Endpoint: POST /rag/recommendations
+    Body JSON:
+    {
+      "course": "Physics 101",
+      "marks": 85.5
+    }
+    Returns LLM-generated list of three recommended courses.
+    """
+    recommendations = recommend_courses(course, marks)
+    return {"recommendations": recommendations}
 
 @router.get("/")
 async def Welcome():
