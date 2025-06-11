@@ -1,7 +1,10 @@
 import os
+import shutil
 import uuid
-from fastapi import APIRouter, HTTPException, Body    # ← added Body here
+from fastapi import APIRouter, HTTPException, Body,UploadFile, File    # ← added Body here
 
+from typing import List
+import tempfile
 from typing import Optional
 
 from schemas import (
@@ -35,66 +38,71 @@ from langchain_community.document_loaders import PyPDFLoader, Docx2txtLoader
 from langchain_community.vectorstores import FAISS as _FAISS
 
 @router.post("/ingest/{user_id}", response_model=IngestResponse)
-async def ingest_documents(user_id: str, body: IngestRequest):
+async def ingest_documents(
+    user_id: str,
+    files: List[UploadFile] = File(...),
+):
     """
-    Ingest a mix of PDF paths, DOCX paths, or raw-text strings into a FAISS vectorstore.
+    Ingest uploaded PDF or DOCX files into a FAISS vectorstore.
     """
-    logger.info("Ingestion requested for user_id=%s. Num inputs=%d", user_id, len(body.documents))
-    try:
-        # 1. Load / extract text from each input
-        all_texts = []
-        for entry in body.documents:
-            path = entry.strip()
-            if path.lower().endswith(".pdf"):
-                loader = PyPDFLoader(path, mode="page")
-                docs = loader.load()
-                all_texts.extend([d.page_content for d in docs])
-                logger.debug("Loaded %d pages from PDF %s", len(docs), path)
+    # 1. Extract text from each uploaded file
+    all_texts = []
+    for upload in files:
+        filename = upload.filename
+        suffix = os.path.splitext(filename)[1].lower()
+        # Save upload to temporary file
+        try:
+            with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+                shutil.copyfileobj(upload.file, tmp)
+                tmp_path = tmp.name
+        finally:
+            upload.file.close()
 
-            elif path.lower().endswith(".docx"):
-                loader = Docx2txtLoader(path)
+        try:
+            if suffix == ".pdf":
+                loader = PyPDFLoader(tmp_path, mode="page")
                 docs = loader.load()
                 all_texts.extend([d.page_content for d in docs])
-                logger.debug("Loaded %d elements from DOCX %s", len(docs), path)
+
+            elif suffix == ".docx":
+                loader = Docx2txtLoader(tmp_path)
+                docs = loader.load()
+                all_texts.extend([d.page_content for d in docs])
 
             else:
-                # treat as raw text
-                all_texts.append(path)
-                logger.debug("Treated raw text input of length %d", len(path))
+                # unsupported file type
+                raise HTTPException(status_code=400, detail=f"Unsupported file type: {filename}")
+        finally:
+            # Clean up temp file
+            try:
+                os.remove(tmp_path)
+            except OSError:
+                pass
 
-        if not all_texts:
-            raise HTTPException(status_code=400, detail="No valid documents or text provided")
+    if not all_texts:
+        raise HTTPException(status_code=400, detail="No valid documents uploaded.")
 
-        # 2. Concatenate all extracted text
-        all_text = "\n\n".join(all_texts)
+    # 2. Concatenate all extracted text
+    combined_text = "\n\n".join(all_texts)
 
-        # 3. Split into chunks
-        text_chunks = text_splitter.split_text(all_text)
-        logger.info("Split into %d chunks", len(text_chunks))
+    # 3. Split into chunks
+    text_chunks = text_splitter.split_text(combined_text)
 
-        # 4. Build FAISS vectorstore
-        vs = _FAISS.from_texts(texts=text_chunks, embedding=embeddings)
+    # 4. Build FAISS vectorstore
+    vs = _FAISS.from_texts(texts=text_chunks, embedding=embeddings)
 
-        # 5. Save to disk
-        faiss_path = save_vectorstore_to_disk(vs, user_id)
-        logger.info("Saved FAISS index to %s", faiss_path)
+    # 5. Save to disk
+    faiss_path = save_vectorstore_to_disk(vs, user_id)
 
-        # 6. Upsert metadata
-        upsert_vectorstore_metadata(user_id, faiss_path)
-        logger.info("Upserted vectorstore metadata for user_id=%s", user_id)
+    # 6. Upsert metadata
+    upsert_vectorstore_metadata(user_id, faiss_path)
 
-        return IngestResponse(
-            success=True,
-            message="Vectorstore created successfully.",
-            user_id=user_id,
-            vectorstore_path=faiss_path
-        )
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error("Error during ingestion for user_id=%s: %s", user_id, e, exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Ingestion failed: {e}")
+    return IngestResponse(
+        success=True,
+        message="Vectorstore created successfully.",
+        user_id=user_id,
+        vectorstore_path=faiss_path
+    )
 
 @router.post("/chat/create/{user_id}", response_model=CreateChatResponse)
 async def create_chat_session(user_id: str):

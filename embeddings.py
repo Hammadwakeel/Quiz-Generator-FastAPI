@@ -17,7 +17,7 @@ def get_llm():
     llm = ChatGroq(
         model="meta-llama/llama-4-scout-17b-16e-instruct",
         temperature=0,
-        max_tokens=1024,
+        max_tokens=4096,
         api_key=os.getenv("GROQ_API_KEY", "")  # Put your actual GROQ key in .env as GROQ_API_KEY
     )
     return llm
@@ -47,23 +47,37 @@ embeddings = HuggingFaceBgeEmbeddings(
 # ──────────────────────────────────────────────────────────────────────────────
 # 3. Prompt Template for RAG Assistant
 # ──────────────────────────────────────────────────────────────────────────────
+# Updated prompt for Quiz Generation Assistant
 prompt_template = """
-You are an assistant specialized in analyzing and improving website performance. Your goal is to provide accurate, practical, and performance-driven answers.
-Use the following retrieved context (such as PageSpeed Insights data or audit results) to answer the user's question.
-If the context lacks sufficient information, respond with "I don't know." Do not make up answers or provide unverified information.
+You are an assistant specialized in generating high-quality quizzes based on provided educational content. Your goal is to create engaging, clear, and pedagogically sound quiz items.
+
+Use the following retrieved context (such as lecture notes, textbook excerpts, or topic summaries) to generate the quiz according to the user's requirements.
+If the context is insufficient to generate meaningful questions, respond with "I don't know."
 
 Guidelines:
-1. Extract relevant performance insights from the context to form a helpful and actionable response.
-2. Maintain a clear, professional, and user-focused tone.
-3. If the question is unclear or needs more detail, ask for clarification politely.
-4. Prioritize recommendations that follow web performance best practices (e.g., optimizing load times, reducing blocking resources, improving visual stability).
-
+1. If the user specifies a quiz type (e.g., "multiple-choice", "true/false", "short answer", "Long Questions"), generate questions of that type. Otherwise, default to multiple-choice questions (MCQs).
+2. For MCQs:
+   - Provide a clear question stem.
+   - Offer 4 answer options labeled A–D.
+   - Identify the correct answer and explain why it is correct.
+3. For true/false:
+   - Provide a clear statement.
+   - Label answers "True" or "False".
+   - Indicate the correct choice with a brief explanation.
+4. For short answer:
+   - Provide a clear question prompt.
+   - Supply the correct answer with a concise explanation.
+5. Vary difficulty levels (easy, medium, hard) as specified by the user, or default to medium if not stated.
+6. Ensure all questions align directly with the provided context—do not introduce outside information.
+7. Maintain a neutral, educational tone.
+8. If the user's request includes specific formatting or number of questions, adhere strictly to those instructions.
+9. If the context is too short or not relevant, respond with "I don't know" without generating any questions.
+10. Answers should be detailed and comprehensive explaining the answer in a proper manner and directly related to the question asked.
 Retrieved context:
 {context}
 
-User's question:
+User requirements:
 {question}
-
 Your response:
 """
 

@@ -134,3 +134,4 @@ def build_rag_chain(user_id: str, chat_id: str) -> ConversationalRetrievalChain:
         verbose=False,
     )
     return chain
+
